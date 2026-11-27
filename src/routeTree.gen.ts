@@ -10,33 +10,102 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DocumentosRouteImport } from './routes/documentos'
+import { Route as HistoricoRouteImport } from './routes/historico'
+import { Route as NovoPedidoRouteImport } from './routes/novo-pedido'
+import { Route as PacientesRouteImport } from './routes/pacientes'
+import { Route as PedidosIdRouteImport } from './routes/pedidos.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocumentosRoute = DocumentosRouteImport.update({
+  id: '/documentos',
+  path: '/documentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoricoRoute = HistoricoRouteImport.update({
+  id: '/historico',
+  path: '/historico',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NovoPedidoRoute = NovoPedidoRouteImport.update({
+  id: '/novo-pedido',
+  path: '/novo-pedido',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PacientesRoute = PacientesRouteImport.update({
+  id: '/pacientes',
+  path: '/pacientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PedidosIdRoute = PedidosIdRouteImport.update({
+  id: '/pedidos/$id',
+  path: '/pedidos/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/documentos': typeof DocumentosRoute
+  '/historico': typeof HistoricoRoute
+  '/novo-pedido': typeof NovoPedidoRoute
+  '/pacientes': typeof PacientesRoute
+  '/pedidos/$id': typeof PedidosIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/documentos': typeof DocumentosRoute
+  '/historico': typeof HistoricoRoute
+  '/novo-pedido': typeof NovoPedidoRoute
+  '/pacientes': typeof PacientesRoute
+  '/pedidos/$id': typeof PedidosIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/documentos': typeof DocumentosRoute
+  '/historico': typeof HistoricoRoute
+  '/novo-pedido': typeof NovoPedidoRoute
+  '/pacientes': typeof PacientesRoute
+  '/pedidos/$id': typeof PedidosIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/documentos'
+    | '/historico'
+    | '/novo-pedido'
+    | '/pacientes'
+    | '/pedidos/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/documentos'
+    | '/historico'
+    | '/novo-pedido'
+    | '/pacientes'
+    | '/pedidos/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/documentos'
+    | '/historico'
+    | '/novo-pedido'
+    | '/pacientes'
+    | '/pedidos/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DocumentosRoute: typeof DocumentosRoute
+  HistoricoRoute: typeof HistoricoRoute
+  NovoPedidoRoute: typeof NovoPedidoRoute
+  PacientesRoute: typeof PacientesRoute
+  PedidosIdRoute: typeof PedidosIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +117,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/documentos': {
+      id: '/documentos'
+      path: '/documentos'
+      fullPath: '/documentos'
+      preLoaderRoute: typeof DocumentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/historico': {
+      id: '/historico'
+      path: '/historico'
+      fullPath: '/historico'
+      preLoaderRoute: typeof HistoricoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/novo-pedido': {
+      id: '/novo-pedido'
+      path: '/novo-pedido'
+      fullPath: '/novo-pedido'
+      preLoaderRoute: typeof NovoPedidoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pacientes': {
+      id: '/pacientes'
+      path: '/pacientes'
+      fullPath: '/pacientes'
+      preLoaderRoute: typeof PacientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pedidos/$id': {
+      id: '/pedidos/$id'
+      path: '/pedidos/$id'
+      fullPath: '/pedidos/$id'
+      preLoaderRoute: typeof PedidosIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DocumentosRoute: DocumentosRoute,
+  HistoricoRoute: HistoricoRoute,
+  NovoPedidoRoute: NovoPedidoRoute,
+  PacientesRoute: PacientesRoute,
+  PedidosIdRoute: PedidosIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

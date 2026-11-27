@@ -28,3 +28,8 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Application architecture
+- Use a schema-validated, versioned local demonstration store shared through a React provider; the authorized local fallback must preserve orders, patients, drafts, attachments and events across reloads without implying authentication.
+- Keep navigable content in TanStack leaf routes and reuse the application shell, order wizard and order detail components; this keeps profile switching and the connected workflow consistent.
+- Keep clinical templates and catalog entries explicitly demonstrative until official source material is supplied; no demonstration field implies a clinical prescribing rule.
