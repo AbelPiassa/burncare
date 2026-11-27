@@ -276,8 +276,9 @@ Esses materiais orientam o desenvolvimento, mas não substituem a validação in
 
 ### Links
 
-- [Repositório GitHub](https://github.com/LuccaFelipeR/BurnCare.CTQ-HU)
+- [Repositório GitHub](https://github.com/AbelPiassa/burncare)
 - [Trello da equipe EQ-10](https://trello.com/b/tF8cHTDq/burncare-eq-10-desenvolvimento)
+- [Figma] (https://www.figma.com/design/H3zLoY1frsSEFxVvPOmjeW/BurnCare-%E2%80%94-Prot%C3%B3tipo-CTQ-v2?node-id=0-1&p=f&t=2a8kfspPbaaH6xZL-0)
 
 ---
 
