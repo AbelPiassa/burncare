@@ -38,6 +38,8 @@ const orderSchema = z.object({
   products: z.array(productSchema), justification: z.string(), supplier: z.string(), createdAt: z.string(),
   status: statusSchema, history: z.array(historySchema), adjustments: z.array(adjustmentSchema),
   attachments: z.array(attachmentSchema), imageAuthorizationChecked: z.boolean(),
+  forecast: z.string().optional(), tracking: z.string().optional(),
+  deliveredTo: z.string().optional(), deliveredAt: z.string().optional(),
 });
 const draftSchema = z.object({
   step: z.number().min(0).max(3), patient: patientSchema,
@@ -47,9 +49,22 @@ const draftSchema = z.object({
   models: z.record(z.string(), z.string()), attachments: z.array(attachmentSchema),
   imageAuthorizationChecked: z.boolean(),
 });
-export const persistedStateSchema = z.object({
+const profileSchema = z.enum(["CTQ", "FORNECEDOR"]);
+const persistedStateV1Schema = z.object({
   version: z.literal(1), orders: z.array(orderSchema), patients: z.array(patientSchema), draft: draftSchema,
 });
+export const persistedStateSchema = z.object({
+  version: z.literal(2), profile: profileSchema.nullable(), orders: z.array(orderSchema), patients: z.array(patientSchema), draft: draftSchema,
+});
+
+/** Lê dados salvos de qualquer versão conhecida, migrando a v1 sem perder registros. */
+export function migrateState(raw: unknown): DemoState | null {
+  const current = persistedStateSchema.safeParse(raw);
+  if (current.success) return current.data;
+  const v1 = persistedStateV1Schema.safeParse(raw);
+  if (v1.success) return { ...v1.data, version: 2, profile: null };
+  return null;
+}
 
 export type Status = z.infer<typeof statusSchema>;
 export type Patient = z.infer<typeof patientSchema>;
@@ -57,6 +72,11 @@ export type Attachment = z.infer<typeof attachmentSchema>;
 export type Order = z.infer<typeof orderSchema>;
 export type OrderDraft = z.infer<typeof draftSchema>;
 export type DemoState = z.infer<typeof persistedStateSchema>;
+export type Profile = z.infer<typeof profileSchema>;
+export const PROFILE_INFO: Record<Profile, { label: string; responsible: string; description: string }> = {
+  CTQ: { label: "Equipe CTQ", responsible: "Equipe CTQ (demonstração)", description: "Pacientes, solicitações, medidas, recebimento, prova, ajustes, entrega e documentos." },
+  FORNECEDOR: { label: "Fornecedor", responsible: "Fornecedor (demonstração)", description: "Solicitações encaminhadas, produção, previsão de envio, despacho e ajustes solicitados." },
+};
 export type ActionData = {
   date?: string;
   forecast?: string;
@@ -183,11 +203,25 @@ export const DEMO_ORDERS: Order[] = [
   seedOrder("BC-2026-007", "Paciente Fictício G", "FIC-0007", "Primeira malha", "Tronco", "torax-com-mangas", "Fornecedor Exemplo 1", "2026-09-02", STATUS.ENTREGUE, [["2026-09-02", STATUS.ENVIADO_CONFECCAO, "Pedido conferido e enviado à confecção."], ["2026-09-04", STATUS.EM_PRODUCAO, "Fornecedor Exemplo 1 confirmou a produção."], ["2026-09-25", STATUS.EM_TRANSPORTE, "Malha enviada pelo fornecedor."], ["2026-09-30", STATUS.AGUARDANDO_PROVA, "Malha recebida no CTQ por Enfermagem (fictício)."], ["2026-10-22", STATUS.ENTREGUE, "Malha entregue a Responsável (fictício). Pedido encerrado."]], [{ id: "BC-2026-007-adjustment-1", description: "Alongar alças em 2 cm.", requestedAt: "2026-10-06", returnedAt: "2026-10-20" }]),
 ];
 
+const DEMO_PATIENT_DETAILS: Array<Pick<Patient, "attendanceDate" | "age" | "city" | "address" | "phone" | "weight" | "height" | "professional">> = [
+  ["2026-10-30", "34", "Londrina", "Rua Exemplo, 100", "(43) 90000-0001", "72", "175"],
+  ["2026-10-25", "51", "Cambé", "Avenida Fictícia, 200", "(43) 90000-0002", "80", "168"],
+  ["2026-10-17", "27", "Londrina", "Rua Demonstração, 300", "(43) 90000-0003", "60", "162"],
+  ["2026-10-12", "45", "Ibiporã", "Rua Modelo, 400", "(43) 90000-0004", "68", "158"],
+  ["2026-09-29", "39", "Londrina", "Avenida Exemplo, 500", "(43) 90000-0005", "90", "181"],
+  ["2026-09-22", "62", "Rolândia", "Rua Simulada, 600", "(43) 90000-0006", "75", "170"],
+  ["2026-08-30", "19", "Londrina", "Rua Teste, 700", "(43) 90000-0007", "55", "160"],
+].map(([attendanceDate, age, city, address, phone, weight, height]) => ({
+  attendanceDate: attendanceDate ?? "", age: age ?? "", city: city ?? "", address: address ?? "", phone: phone ?? "",
+  weight: weight ?? "", height: height ?? "", professional: "Profissional Fictício (demonstração)",
+}));
+
 export function createInitialState(): DemoState {
   return {
-    version: 1,
+    version: 2,
+    profile: null,
     orders: DEMO_ORDERS,
-    patients: DEMO_ORDERS.map((order) => ({ ...EMPTY_PATIENT, id: order.patientId, name: order.patientName, recordNumber: order.recordNumber })),
+    patients: DEMO_ORDERS.map((order, index) => ({ ...EMPTY_PATIENT, ...DEMO_PATIENT_DETAILS[index], id: order.patientId, name: order.patientName, recordNumber: order.recordNumber })),
     draft: { ...EMPTY_DRAFT, patient: { ...EMPTY_PATIENT }, regions: [], productIds: [], measurements: {}, models: {}, attachments: [] },
   };
 }
@@ -201,11 +235,14 @@ export function calculateIndicators(orders: Order[]) {
   };
 }
 
-export function validateDraftStep(draft: OrderDraft, step: number) {
+export function validateDraftStep(draft: OrderDraft, step: number, patients: Patient[] = []) {
   const errors: string[] = [];
   if (step === 0 || step === 3) {
     if (!draft.patient.name.trim()) errors.push("Informe o nome do paciente fictício.");
     if (!draft.patient.recordNumber.trim()) errors.push("Informe o prontuário demonstrativo.");
+    const owner = patients.find((item) => normalize(item.recordNumber) === normalize(draft.patient.recordNumber));
+    if (owner && owner.id !== draft.patient.id && draft.patient.recordNumber.trim() && normalize(owner.name) !== normalize(draft.patient.name)) errors.push(`O prontuário ${owner.recordNumber} já pertence a ${owner.name}. Selecione o paciente cadastrado.`);
+    errors.push(...validatePatientNumbers(draft.patient));
   }
   if (step === 1 || step === 3) {
     if (draft.regions.length === 0) errors.push("Selecione ao menos uma região anatômica.");
@@ -232,7 +269,7 @@ export function createOrderFromDraft(draft: OrderDraft, orders: Order[]) {
     const product = CATALOG.find((item) => item.id === productId);
     return product ? [{ productId, description: product.description, code: product.code, susCode: product.susCode, model: draft.models[productId] ?? "", measurements: draft.measurements[productId] ?? {} }] : [];
   });
-  const patient = { ...draft.patient, id: `patient-${draft.patient.recordNumber.trim()}` };
+  const patient = { ...draft.patient, name: draft.patient.name.trim(), recordNumber: draft.patient.recordNumber.trim(), id: draft.patient.id !== EMPTY_PATIENT.id ? draft.patient.id : `patient-${draft.patient.recordNumber.trim()}` };
   const order: Order = {
     id, patientId: patient.id, patientName: patient.name.trim(), recordNumber: patient.recordNumber.trim(),
     requestType: draft.requestType, regions: draft.regions, products, justification: draft.justification.trim(),
@@ -255,18 +292,19 @@ export function validateOrderAction(order: Order, data: ActionData) {
   return errors;
 }
 
-export function applyOrderAction(order: Order, data: ActionData): Order {
+export function applyOrderAction(order: Order, data: ActionData, responsible = PROFILE_INFO.CTQ.responsible): Order {
   const date = data.date ?? "";
   const note = (data.observation ?? "").trim();
   let status = order.status;
   let description = "";
   let adjustments = order.adjustments;
+  const extra: Partial<Order> = {};
   if (order.status === STATUS.ENVIADO_CONFECCAO) {
     status = STATUS.EM_PRODUCAO; description = `${order.supplier} confirmou o início da produção.`;
-    if (data.forecast) description += ` Previsão de envio: ${formatDate(data.forecast)}.`;
+    if (data.forecast) { description += ` Previsão de envio: ${formatDate(data.forecast)}.`; extra.forecast = data.forecast; }
   } else if (order.status === STATUS.EM_PRODUCAO) {
     status = STATUS.EM_TRANSPORTE; description = "Malha enviada pelo fornecedor.";
-    if (data.tracking?.trim()) description += ` Rastreio: ${data.tracking.trim()}.`;
+    if (data.tracking?.trim()) { description += ` Rastreio: ${data.tracking.trim()}.`; extra.tracking = data.tracking.trim(); }
   } else if (order.status === STATUS.EM_TRANSPORTE) {
     status = STATUS.AGUARDANDO_PROVA; description = `Malha recebida no CTQ por ${(data.receivedBy ?? "").trim()}.`;
   } else if (order.status === STATUS.AGUARDANDO_PROVA && data.result === "AJUSTE") {
@@ -279,7 +317,85 @@ export function applyOrderAction(order: Order, data: ActionData): Order {
     adjustments = adjustments.map((adjustment, index) => index === adjustments.length - 1 ? { ...adjustment, returnedAt: date } : adjustment);
   } else if (order.status === STATUS.PRONTA_ENTREGA) {
     status = STATUS.ENTREGUE; description = `Malha entregue a ${(data.receivedBy ?? "").trim()}. Pedido encerrado.`;
+    extra.deliveredTo = (data.receivedBy ?? "").trim(); extra.deliveredAt = date;
   }
   if (note) description += ` Obs.: ${note}`;
-  return { ...order, status, adjustments, history: [...order.history, { id: `${order.id}-event-${order.history.length}`, date, status, description, responsible: "Equipe CTQ (demonstração)" }] };
+  return { ...order, ...extra, status, adjustments, history: [...order.history, { id: `${order.id}-event-${order.history.length}`, date, status, description, responsible }] };
+}
+
+
+function normalize(value: string) {
+  return value.trim().toLocaleLowerCase("pt-BR");
+}
+
+export function calculateBmi(weight: string, height: string) {
+  const kg = Number(weight.replace(",", "."));
+  const meters = Number(height.replace(",", ".")) / 100;
+  if (!(kg > 0) || !(meters > 0)) return null;
+  return Math.round((kg / (meters * meters)) * 10) / 10;
+}
+
+function validatePatientNumbers(patient: Patient) {
+  const errors: string[] = [];
+  const check = (value: string, min: number, max: number, message: string) => {
+    if (!value.trim()) return;
+    const number = Number(value.replace(",", "."));
+    if (Number.isNaN(number) || number < min || number > max) errors.push(message);
+  };
+  check(patient.age, 0, 130, "Informe uma idade entre 0 e 130 anos.");
+  check(patient.weight, 0.5, 400, "Informe um peso entre 0,5 e 400 kg.");
+  check(patient.height, 30, 250, "Informe uma altura entre 30 e 250 cm.");
+  if (patient.attendanceDate && !validDate(patient.attendanceDate)) errors.push("Informe uma data de atendimento válida.");
+  return errors;
+}
+
+/** Valida o cadastro de paciente fictício, incluindo prontuário duplicado. */
+export function validatePatient(patient: Patient, patients: Patient[]) {
+  const errors: string[] = [];
+  if (!patient.name.trim()) errors.push("Informe o nome do paciente fictício.");
+  if (!patient.recordNumber.trim()) errors.push("Informe o prontuário demonstrativo.");
+  else if (patients.some((item) => item.id !== patient.id && normalize(item.recordNumber) === normalize(patient.recordNumber))) errors.push("Já existe um paciente com este prontuário.");
+  errors.push(...validatePatientNumbers(patient));
+  return errors;
+}
+
+/** Inclui ou atualiza o paciente e mantém nome/prontuário coerentes nos pedidos vinculados. */
+export function savePatientInState(state: DemoState, patient: Patient): DemoState {
+  const clean = { ...patient, name: patient.name.trim(), recordNumber: patient.recordNumber.trim() };
+  const exists = state.patients.some((item) => item.id === clean.id);
+  return {
+    ...state,
+    patients: exists ? state.patients.map((item) => item.id === clean.id ? clean : item) : [clean, ...state.patients],
+    orders: state.orders.map((order) => order.patientId === clean.id ? { ...order, patientName: clean.name, recordNumber: clean.recordNumber } : order),
+  };
+}
+
+export function newPatientId(recordNumber: string) {
+  return `patient-${recordNumber.trim()}-${Date.now().toString(36)}`;
+}
+
+/** Perfil fornecedor movimenta confecção e despacho; a equipe CTQ cuida do restante. */
+export function canProfileAct(profile: Profile | null, status: Status) {
+  if (status === STATUS.ENTREGUE || !profile) return false;
+  const supplierSteps: Status[] = [STATUS.ENVIADO_CONFECCAO, STATUS.EM_PRODUCAO];
+  return profile === "FORNECEDOR" ? supplierSteps.includes(status) : !supplierSteps.includes(status);
+}
+
+export const STATUS_ORDER: Status[] = ["ENVIADO_CONFECCAO", "EM_PRODUCAO", "EM_TRANSPORTE", "AGUARDANDO_PROVA", "EM_AJUSTE", "PRONTA_ENTREGA", "ENTREGUE"];
+
+export function statusSummary(orders: Order[]) {
+  return Object.fromEntries(STATUS_ORDER.map((status) => [status, orders.filter((order) => order.status === status).length])) as Record<Status, number>;
+}
+
+export type OrderFilter = { status?: string; term?: string; from?: string; to?: string };
+export function filterOrders(orders: Order[], filter: OrderFilter) {
+  const term = normalize(filter.term ?? "");
+  return orders.filter((order) => {
+    const status = filter.status ?? "TODOS";
+    const statusMatch = status === "TODOS" ? true : status === "ABERTOS" ? order.status !== STATUS.ENTREGUE : order.status === status;
+    const termMatch = !term || normalize(`${order.id} ${order.patientName} ${order.recordNumber}`).includes(term);
+    const fromMatch = !filter.from || order.createdAt >= filter.from;
+    const toMatch = !filter.to || order.createdAt <= filter.to;
+    return statusMatch && termMatch && fromMatch && toMatch;
+  });
 }

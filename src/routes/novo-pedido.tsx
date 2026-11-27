@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { OrderWizard } from "@/components/burncare/wizard";
+import { RequireCtq } from "@/components/burncare/shell";
 
 export const Route = createFileRoute("/novo-pedido")({
   head: () => ({ meta: [
@@ -9,5 +10,5 @@ export const Route = createFileRoute("/novo-pedido")({
     { property: "og:description", content: "Identificação, região, produtos, medidas, anexos e conferência em uma solicitação fictícia." },
     { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
   ] }),
-  component: OrderWizard,
+  component: () => <RequireCtq><OrderWizard /></RequireCtq>,
 });

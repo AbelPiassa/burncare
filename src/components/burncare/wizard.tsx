@@ -1,27 +1,15 @@
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, FileImage, Plus, Trash2 } from "lucide-react";
-import { useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
+import { PatientFields } from "./patient-form";
 import { BodyMap } from "./body-map";
 import { useDemonstration } from "./store";
 import {
-  CATALOG, MODEL_OPTIONS, availableProducts, measurementNames, regionName, validateDraftStep,
-  type Attachment, type Patient,
+  CATALOG, EMPTY_PATIENT, MODEL_OPTIONS, availableProducts, measurementNames, regionName, validateDraftStep,
+  type Attachment,
 } from "@/lib/burncare/model";
 
 const steps = ["Paciente e prescrição", "Região e produto", "Medidas e anexos", "Conferência"];
-const patientFields: Array<{ name: Exclude<keyof Patient, "id">; label: string; placeholder?: string; type?: string; full?: boolean }> = [
-  { name: "name", label: "Nome do paciente *", placeholder: "Paciente demonstrativo", full: true },
-  { name: "recordNumber", label: "Prontuário HU *", placeholder: "DEMO-HU-0000" },
-  { name: "attendanceDate", label: "Data do atendimento", type: "date" },
-  { name: "age", label: "Idade", placeholder: "Ex.: 32", type: "number" },
-  { name: "city", label: "Cidade", placeholder: "Ex.: Londrina" },
-  { name: "address", label: "Endereço", placeholder: "Endereço fictício", full: true },
-  { name: "phone", label: "Telefone", placeholder: "(43) 99999-0000" },
-  { name: "weight", label: "Peso (kg)", placeholder: "Ex.: 70", type: "number" },
-  { name: "height", label: "Altura (cm)", placeholder: "Ex.: 170", type: "number" },
-  { name: "professional", label: "Profissional solicitante", placeholder: "Nome fictício do profissional", full: true },
-];
-
 function readFile(file: File): Promise<Attachment> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -39,9 +27,11 @@ export function OrderWizard() {
   const navigate = useNavigate();
   const products = availableProducts(draft.regions);
   const visibleProducts = products.filter((product) => `${product.description} ${product.code} ${product.susCode}`.toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR")));
-  const weight = Number(draft.patient.weight);
-  const height = Number(draft.patient.height) / 100;
-  const bmi = weight > 0 && height > 0 ? (weight / (height * height)).toFixed(1) : null;
+  const submitting = useRef(false);
+  const [patientSearch, setPatientSearch] = useState("");
+  const patientTerm = patientSearch.trim().toLocaleLowerCase("pt-BR");
+  const patientMatches = patientTerm ? state.patients.filter((patient) => `${patient.name} ${patient.recordNumber}`.toLocaleLowerCase("pt-BR").includes(patientTerm)).slice(0, 5) : [];
+  const selectedExisting = state.patients.some((patient) => patient.id === draft.patient.id);
 
   function showErrors(nextErrors: string[]) {
     setErrors(nextErrors);
@@ -49,7 +39,7 @@ export function OrderWizard() {
   }
 
   function goTo(step: number) {
-    if (step > draft.step && !showErrors(validateDraftStep(draft, draft.step))) return;
+    if (step > draft.step && !showErrors(validateDraftStep(draft, draft.step, state.patients))) return;
     setErrors([]);
     updateDraft({ step });
   }
@@ -88,8 +78,10 @@ export function OrderWizard() {
   }
 
   function finish() {
-    const allErrors = [0, 1, 2].flatMap((step) => validateDraftStep(draft, step));
-    if (!showErrors(allErrors)) return;
+    if (submitting.current) return;
+    const allErrors = [0, 1, 2].flatMap((step) => validateDraftStep(draft, step, state.patients));
+    if (!showErrors([...new Set(allErrors)])) return;
+    submitting.current = true;
     const order = submitDraft();
     void navigate({ to: "/pedidos/$id", params: { id: order.id } });
   }
@@ -120,14 +112,15 @@ export function OrderWizard() {
 
           {draft.step === 0 && (
             <div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {patientFields.map((field) => (
-                  <div key={field.name} className={field.full ? "sm:col-span-2" : ""}>
-                    <label className="label" htmlFor={`patient-${field.name}`}>{field.label}</label>
-                    <input id={`patient-${field.name}`} className="field" type={field.type ?? "text"} min={field.type === "number" ? "0" : undefined}
-                      value={draft.patient[field.name]} placeholder={field.placeholder} onChange={(event) => { updatePatient(field.name, event.target.value); setErrors([]); }} />
-                  </div>
-                ))}
+              <div className="mb-5 rounded-xl border bg-muted/50 p-4">
+                <label className="label" htmlFor="patient-search">Buscar paciente cadastrado</label>
+                <input id="patient-search" className="field" placeholder="Nome ou prontuário" value={patientSearch} onChange={(event) => setPatientSearch(event.target.value)} />
+                {patientMatches.length > 0 && <ul className="mt-2 divide-y rounded-lg border bg-card">{patientMatches.map((patient) => <li key={patient.id}><button type="button" className="flex w-full justify-between gap-3 p-3 text-left text-sm hover:bg-muted" onClick={() => { updateDraft({ patient, requestType: state.orders.some((order) => order.patientId === patient.id) ? "Segunda malha" : "Primeira malha" }); setPatientSearch(""); setErrors([]); }}><span className="font-semibold">{patient.name}</span><span className="text-muted-foreground">{patient.recordNumber}</span></button></li>)}</ul>}
+                {patientTerm && patientMatches.length === 0 && <p className="mt-2 text-xs text-muted-foreground">Nenhum paciente encontrado — preencha abaixo para cadastrar um novo.</p>}
+                {selectedExisting && <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">Paciente cadastrado selecionado: <strong>{draft.patient.name}</strong><button type="button" className="text-xs font-semibold text-primary underline" onClick={() => updateDraft({ patient: { ...EMPTY_PATIENT } })}>Novo paciente</button></p>}
+              </div>
+              <PatientFields idPrefix="patient" patient={draft.patient} onChange={(field, value) => { updatePatient(field, value); setErrors([]); }} />
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <fieldset className="sm:col-span-2">
                   <legend className="label">Tipo de solicitação *</legend>
                   <div className="flex flex-wrap gap-2">
@@ -138,7 +131,6 @@ export function OrderWizard() {
                   </div>
                 </fieldset>
               </div>
-              {bmi && <p className="mt-4 rounded-lg bg-accent p-3 text-sm font-semibold text-accent-foreground">IMC estimado com base no peso e altura: {bmi} kg/m²</p>}
               <div className="mt-5 border-l-4 border-warning-foreground bg-warning p-4 text-sm leading-6 text-warning-foreground">
                 <strong>Observação importante:</strong> a segunda malha é uma nova indicação da ficha médica. O ajuste de uma peça já produzida permanece vinculado ao pedido original.
               </div>
@@ -210,10 +202,11 @@ export function OrderWizard() {
           {draft.step === 3 && (
             <div className="space-y-5">
               <div className="rounded-xl bg-accent p-5"><h3 className="text-lg font-semibold text-accent-foreground">{draft.patient.name || "Paciente não informado"}</h3><p className="mt-1 text-sm text-accent-foreground">Prontuário {draft.patient.recordNumber || "—"} · {draft.requestType}</p></div>
-              <ReviewBlock title="Identificação"><p>{draft.patient.city || "Cidade não informada"} · {draft.patient.phone || "Telefone não informado"}</p><p>Solicitante: {draft.patient.professional || "Não informado"}</p></ReviewBlock>
-              <ReviewBlock title="Produtos">{draft.productIds.map((id) => { const product = CATALOG.find((item) => item.id === id); return <p key={id} className="mb-2"><strong>{product?.description}</strong><br /><span className="text-xs text-muted-foreground">{product?.code} · SUS {product?.susCode}</span></p>; })}</ReviewBlock>
-              <ReviewBlock title="Justificativa"><p>{draft.justification || "Não informada"}</p></ReviewBlock>
-              <ReviewBlock title="Medidas e anexos"><p>{draft.productIds.length} produto(s), com no mínimo duas medidas válidas cada.</p><p className="mt-1 flex items-center gap-2"><FileImage className="size-4" /> {draft.attachments.length} imagem(ns) fictícia(s)</p></ReviewBlock>
+              <ReviewBlock title="Paciente e prescrição" onEdit={() => goTo(0)}><p>{draft.patient.city || "Cidade não informada"} · {draft.patient.phone || "Telefone não informado"}</p><p>Peso {draft.patient.weight || "—"} kg · Altura {draft.patient.height || "—"} cm</p><p>Profissional solicitante: {draft.patient.professional || "Não informado"}</p></ReviewBlock>
+              <ReviewBlock title="Regiões" onEdit={() => goTo(1)}><p>{draft.regions.map((region) => `${regionName(region).replaceAll("-", " ")} (${region.startsWith("frente") ? "frente" : "costas"})`).join(", ") || "—"}</p></ReviewBlock>
+              <ReviewBlock title="Produtos, acabamentos e medidas" onEdit={() => goTo(2)}>{draft.productIds.map((id) => { const product = CATALOG.find((item) => item.id === id); const values = Object.entries(draft.measurements[id] ?? {}).filter(([, value]) => value); return <div key={id} className="mb-3"><p><strong>{product?.description}</strong> <span className="text-xs text-muted-foreground">{product?.code} · SUS {product?.susCode}</span></p><p className="text-xs">Acabamento: {draft.models[id] || "não informado"}</p><p className="text-xs text-muted-foreground">{values.map(([name, value]) => `${name}: ${value} cm`).join(" · ") || "Sem medidas"}</p></div>; })}</ReviewBlock>
+              <ReviewBlock title="Justificativa" onEdit={() => goTo(1)}><p>{draft.justification || "Não informada"}</p></ReviewBlock>
+              <ReviewBlock title="Anexos" onEdit={() => goTo(2)}><p className="flex items-center gap-2"><FileImage className="size-4" /> {draft.attachments.length} imagem(ns) fictícia(s) · termo de imagem {draft.imageAuthorizationChecked ? "conferido" : "não conferido"}</p>{draft.attachments.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{draft.attachments.map((file) => <img key={file.id} src={file.dataUrl} alt={`Anexo ${file.name}`} className="size-14 rounded object-cover" />)}</div>}</ReviewBlock>
               <p className="rounded-lg bg-warning p-4 text-sm leading-6 text-warning-foreground">Ao confirmar, o pedido será criado somente neste navegador, com status “Enviado à confecção”. Nenhum envio externo será realizado.</p>
             </div>
           )}
@@ -229,6 +222,6 @@ export function OrderWizard() {
   );
 }
 
-function ReviewBlock({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="border-b pb-4 last:border-0"><h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</h3><div className="text-sm leading-6">{children}</div></section>;
+function ReviewBlock({ title, children, onEdit }: { title: string; children: React.ReactNode; onEdit: () => void }) {
+  return <section className="border-b pb-4 last:border-0"><div className="mb-2 flex items-center justify-between gap-2"><h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</h3><button type="button" className="text-xs font-semibold text-primary underline" onClick={onEdit}>Corrigir</button></div><div className="text-sm leading-6">{children}</div></section>;
 }

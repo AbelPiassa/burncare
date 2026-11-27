@@ -1,18 +1,22 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  applyOrderAction, createInitialState, createOrderFromDraft, persistedStateSchema,
-  type ActionData, type DemoState, type Order, type OrderDraft,
+  PROFILE_INFO, applyOrderAction, canProfileAct, createInitialState, createOrderFromDraft, migrateState,
+  savePatientInState, validateOrderAction, validatePatient,
+  type ActionData, type DemoState, type Order, type OrderDraft, type Patient, type Profile,
 } from "@/lib/burncare/model";
 
-const STORAGE_KEY = "burncare-demonstration-v1";
+export const STORAGE_KEY = "burncare-demonstration-v1";
 
 type StoreValue = {
   state: DemoState;
+  loaded: boolean;
   storageWarning: string;
+  setProfile: (profile: Profile | null) => void;
   updateDraft: (update: Partial<OrderDraft>) => void;
   updatePatient: (field: string, value: string) => void;
+  savePatient: (patient: Patient) => string[];
   submitDraft: () => Order;
-  registerAction: (id: string, data: ActionData) => void;
+  registerAction: (id: string, data: ActionData) => string[];
   resetDemonstration: () => void;
 };
 
@@ -22,13 +26,15 @@ export function DemonstrationProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<DemoState>(() => createInitialState());
   const [loaded, setLoaded] = useState(false);
   const [storageWarning, setStorageWarning] = useState("");
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed = persistedStateSchema.safeParse(JSON.parse(raw));
-        if (parsed.success) setState(parsed.data);
+        const parsed = migrateState(JSON.parse(raw));
+        if (parsed) setState(parsed);
         else setStorageWarning("Os dados locais salvos eram inválidos; a demonstração inicial foi restaurada.");
       }
     } catch {
@@ -49,31 +55,52 @@ export function DemonstrationProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<StoreValue>(() => ({
     state,
+    loaded,
     storageWarning,
+    setProfile: (profile) => setState((current) => ({ ...current, profile })),
     updateDraft: (update) => setState((current) => ({ ...current, draft: { ...current.draft, ...update } })),
     updatePatient: (field, value) => setState((current) => ({
       ...current,
       draft: { ...current.draft, patient: { ...current.draft.patient, [field]: value } },
     })),
+    savePatient: (patient) => {
+      const errors = validatePatient(patient, stateRef.current.patients);
+      if (errors.length === 0) {
+        const next = savePatientInState(stateRef.current, patient);
+        stateRef.current = next;
+        setState(next);
+      }
+      return errors;
+    },
     submitDraft: () => {
-      const { order, patient } = createOrderFromDraft(state.draft, state.orders);
-      setState((current) => ({
-        ...current,
-        orders: [order, ...current.orders.filter((item) => item.id !== order.id)],
-        patients: [patient, ...current.patients.filter((item) => item.id !== patient.id)],
-        draft: createInitialState().draft,
-      }));
+      const current = stateRef.current;
+      const { order, patient } = createOrderFromDraft(current.draft, current.orders);
+      const withPatient = savePatientInState(current, patient);
+      const next = { ...withPatient, orders: [order, ...withPatient.orders.filter((item) => item.id !== order.id)], draft: createInitialState().draft };
+      stateRef.current = next;
+      setState(next);
       return order;
     },
-    registerAction: (id, data) => setState((current) => ({
-      ...current,
-      orders: current.orders.map((order) => order.id === id ? applyOrderAction(order, data) : order),
-    })),
+    registerAction: (id, data) => {
+      const current = stateRef.current;
+      const order = current.orders.find((item) => item.id === id);
+      if (!order) return ["Pedido não encontrado."];
+      if (!canProfileAct(current.profile, order.status)) return ["O perfil ativo não pode registrar esta etapa."];
+      const errors = validateOrderAction(order, data);
+      if (errors.length) return errors;
+      const responsible = PROFILE_INFO[current.profile ?? "CTQ"].responsible;
+      const next = { ...current, orders: current.orders.map((item) => item.id === id ? applyOrderAction(item, data, responsible) : item) };
+      stateRef.current = next;
+      setState(next);
+      return [];
+    },
     resetDemonstration: () => {
-      setState(createInitialState());
+      const next = { ...createInitialState(), profile: stateRef.current.profile };
+      stateRef.current = next;
+      setState(next);
       setStorageWarning("");
     },
-  }), [state, storageWarning]);
+  }), [state, loaded, storageWarning]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

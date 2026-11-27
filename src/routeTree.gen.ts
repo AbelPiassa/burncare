@@ -10,13 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DocumentosRouteImport } from './routes/documentos'
 import { Route as HistoricoRouteImport } from './routes/historico'
 import { Route as NovoPedidoRouteImport } from './routes/novo-pedido'
+import { Route as PacientesRouteImport } from './routes/pacientes'
+import { Route as DocumentosIndexRouteImport } from './routes/documentos.index'
+import { Route as DocumentosIdRouteImport } from './routes/documentos.$id'
+import { Route as PacientesIndexRouteImport } from './routes/pacientes.index'
+import { Route as PacientesIdRouteImport } from './routes/pacientes.$id'
 import { Route as PedidosIdRouteImport } from './routes/pedidos.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentosRoute = DocumentosRouteImport.update({
+  id: '/documentos',
+  path: '/documentos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoricoRoute = HistoricoRouteImport.update({
@@ -29,6 +40,31 @@ const NovoPedidoRoute = NovoPedidoRouteImport.update({
   path: '/novo-pedido',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PacientesRoute = PacientesRouteImport.update({
+  id: '/pacientes',
+  path: '/pacientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentosIndexRoute = DocumentosIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DocumentosRoute,
+} as any)
+const DocumentosIdRoute = DocumentosIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => DocumentosRoute,
+} as any)
+const PacientesIndexRoute = PacientesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PacientesRoute,
+} as any)
+const PacientesIdRoute = PacientesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PacientesRoute,
+} as any)
 const PedidosIdRoute = PedidosIdRouteImport.update({
   id: '/pedidos/$id',
   path: '/pedidos/$id',
@@ -37,35 +73,82 @@ const PedidosIdRoute = PedidosIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/documentos': typeof DocumentosRouteWithChildren
   '/historico': typeof HistoricoRoute
   '/novo-pedido': typeof NovoPedidoRoute
+  '/pacientes': typeof PacientesRouteWithChildren
+  '/documentos/$id': typeof DocumentosIdRoute
+  '/pacientes/$id': typeof PacientesIdRoute
   '/pedidos/$id': typeof PedidosIdRoute
+  '/documentos/': typeof DocumentosIndexRoute
+  '/pacientes/': typeof PacientesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/historico': typeof HistoricoRoute
   '/novo-pedido': typeof NovoPedidoRoute
+  '/documentos/$id': typeof DocumentosIdRoute
+  '/pacientes/$id': typeof PacientesIdRoute
   '/pedidos/$id': typeof PedidosIdRoute
+  '/documentos': typeof DocumentosIndexRoute
+  '/pacientes': typeof PacientesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/documentos': typeof DocumentosRouteWithChildren
   '/historico': typeof HistoricoRoute
   '/novo-pedido': typeof NovoPedidoRoute
+  '/pacientes': typeof PacientesRouteWithChildren
+  '/documentos/$id': typeof DocumentosIdRoute
+  '/pacientes/$id': typeof PacientesIdRoute
   '/pedidos/$id': typeof PedidosIdRoute
+  '/documentos/': typeof DocumentosIndexRoute
+  '/pacientes/': typeof PacientesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/historico' | '/novo-pedido' | '/pedidos/$id'
+  fullPaths:
+    | '/'
+    | '/documentos'
+    | '/historico'
+    | '/novo-pedido'
+    | '/pacientes'
+    | '/documentos/$id'
+    | '/pacientes/$id'
+    | '/pedidos/$id'
+    | '/documentos/'
+    | '/pacientes/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/historico' | '/novo-pedido' | '/pedidos/$id'
-  id: '__root__' | '/' | '/historico' | '/novo-pedido' | '/pedidos/$id'
+  to:
+    | '/'
+    | '/historico'
+    | '/novo-pedido'
+    | '/documentos/$id'
+    | '/pacientes/$id'
+    | '/pedidos/$id'
+    | '/documentos'
+    | '/pacientes'
+  id:
+    | '__root__'
+    | '/'
+    | '/documentos'
+    | '/historico'
+    | '/novo-pedido'
+    | '/pacientes'
+    | '/documentos/$id'
+    | '/pacientes/$id'
+    | '/pedidos/$id'
+    | '/documentos/'
+    | '/pacientes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DocumentosRoute: typeof DocumentosRouteWithChildren
   HistoricoRoute: typeof HistoricoRoute
   NovoPedidoRoute: typeof NovoPedidoRoute
+  PacientesRoute: typeof PacientesRouteWithChildren
   PedidosIdRoute: typeof PedidosIdRoute
 }
 
@@ -76,6 +159,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documentos': {
+      id: '/documentos'
+      path: '/documentos'
+      fullPath: '/documentos'
+      preLoaderRoute: typeof DocumentosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/historico': {
@@ -92,6 +182,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NovoPedidoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pacientes': {
+      id: '/pacientes'
+      path: '/pacientes'
+      fullPath: '/pacientes'
+      preLoaderRoute: typeof PacientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documentos/': {
+      id: '/documentos/'
+      path: '/'
+      fullPath: '/documentos/'
+      preLoaderRoute: typeof DocumentosIndexRouteImport
+      parentRoute: typeof DocumentosRoute
+    }
+    '/documentos/$id': {
+      id: '/documentos/$id'
+      path: '/$id'
+      fullPath: '/documentos/$id'
+      preLoaderRoute: typeof DocumentosIdRouteImport
+      parentRoute: typeof DocumentosRoute
+    }
+    '/pacientes/': {
+      id: '/pacientes/'
+      path: '/'
+      fullPath: '/pacientes/'
+      preLoaderRoute: typeof PacientesIndexRouteImport
+      parentRoute: typeof PacientesRoute
+    }
+    '/pacientes/$id': {
+      id: '/pacientes/$id'
+      path: '/$id'
+      fullPath: '/pacientes/$id'
+      preLoaderRoute: typeof PacientesIdRouteImport
+      parentRoute: typeof PacientesRoute
+    }
     '/pedidos/$id': {
       id: '/pedidos/$id'
       path: '/pedidos/$id'
@@ -102,10 +227,40 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface DocumentosRouteChildren {
+  DocumentosIdRoute: typeof DocumentosIdRoute
+  DocumentosIndexRoute: typeof DocumentosIndexRoute
+}
+
+const DocumentosRouteChildren: DocumentosRouteChildren = {
+  DocumentosIdRoute: DocumentosIdRoute,
+  DocumentosIndexRoute: DocumentosIndexRoute,
+}
+
+const DocumentosRouteWithChildren = DocumentosRoute._addFileChildren(
+  DocumentosRouteChildren,
+)
+
+interface PacientesRouteChildren {
+  PacientesIdRoute: typeof PacientesIdRoute
+  PacientesIndexRoute: typeof PacientesIndexRoute
+}
+
+const PacientesRouteChildren: PacientesRouteChildren = {
+  PacientesIdRoute: PacientesIdRoute,
+  PacientesIndexRoute: PacientesIndexRoute,
+}
+
+const PacientesRouteWithChildren = PacientesRoute._addFileChildren(
+  PacientesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DocumentosRoute: DocumentosRouteWithChildren,
   HistoricoRoute: HistoricoRoute,
   NovoPedidoRoute: NovoPedidoRoute,
+  PacientesRoute: PacientesRouteWithChildren,
   PedidosIdRoute: PedidosIdRoute,
 }
 export const routeTree = rootRouteImport
