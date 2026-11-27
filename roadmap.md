@@ -1,4 +1,5 @@
 # BurnCare
+- [x] Audit the current public GitHub repository and list remaining work by module and priority
 - [ ] Integrated local demonstration store, fictitious patients and order history
 - [ ] Profile access and navigable dashboard
 - [ ] Four-step order flow with body regions, products, demonstrative measurements and attachments
