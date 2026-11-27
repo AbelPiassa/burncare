@@ -1,0 +1,15 @@
+{
+  "source": "BurnCare.CTQ-HU-main.zip and read-only public main branch inspection",
+  "capabilities": [
+    { "capability": "Application screens and order rules", "source": "React Native/Expo archive", "outcome": "Recreated for the TanStack web preview while retaining native source files", "status": "verified", "next_action": "Continue aligning details with the supplied Figma" },
+    { "capability": "Schema", "source": "No external schema in source", "outcome": "Versioned Zod-validated local demonstration schema", "status": "verified", "next_action": "Do not connect clinical data without institutional authorization" },
+    { "capability": "Bundled fictitious records", "source": "acompanhamentoPedidos.js", "outcome": "Seven fictitious orders migrated to the shared local store", "status": "verified", "next_action": "Keep all records explicitly fictitious" },
+    { "capability": "Authentication identities and authorization", "source": "Absent in source", "outcome": "Not added; the preview does not imply authentication", "status": "not_applicable", "next_action": "Define only with institutional authorization" },
+    { "capability": "Attachments", "source": "expo-image-picker selection", "outcome": "Local fictitious image metadata and bytes persist as data URLs", "status": "verified", "next_action": "Never use real patient photographs" },
+    { "capability": "External providers, public endpoints, callbacks, webhooks and schedules", "source": "Absent in inspected source", "outcome": "Nothing external connected", "status": "not_applicable", "next_action": "Disclose unavailable integrations" },
+    { "capability": "Secrets", "source": "No environment variables detected", "outcome": "No credentials requested or stored", "status": "not_applicable", "next_action": "None" },
+    { "capability": "Printing", "source": "ReciboEntrega window.print on current main", "outcome": "Demonstration printing retained in the order detail", "status": "verified", "next_action": "PDF generation remains separate future work" },
+    { "capability": "Runtime cutover", "source": "Expo scripts without web preview commands", "outcome": "TanStack scripts and dependencies restored; native scripts retained with native prefix", "status": "verified", "next_action": "Keep the web preview build healthy" },
+    { "capability": "Verification", "source": "Required production checks", "outcome": "Five rule tests passed; create, reload, attachment persistence, status update, Home readback and mobile navigation exercised without console errors", "status": "verified", "next_action": "Recheck after subsequent changes" }
+  ]
+}

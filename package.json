@@ -2,13 +2,18 @@
   "name": "burncare.ctq-hu",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Sistema de gestão de malhas compressivas do CTQ",
   "main": "index.js",
   "scripts": {
-    "start": "expo start",
-    "web": "expo start --web",
-    "android": "expo start --android",
-    "ios": "expo start --ios"
+    "dev": "vite dev",
+    "build": "vite build",
+    "build:dev": "vite build --mode development",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "native:start": "expo start",
+    "native:android": "expo start --android",
+    "native:ios": "expo start --ios"
   },
   "repository": {
     "type": "git",
@@ -21,10 +26,16 @@
     "@react-navigation/drawer": "^7.14.4",
     "@react-navigation/native": "^7.5.1",
     "@react-navigation/native-stack": "^7.21.0",
+    "@tailwindcss/vite": "4.3.5",
+    "@tanstack/react-query": "5.101.1",
+    "@tanstack/react-router": "1.170.42",
+    "@tanstack/react-start": "1.168.61",
+    "@tanstack/router-plugin": "1.168.43",
     "expo": "~57.0.31",
     "expo-font": "~57.0.4",
     "expo-image-picker": "~57.0.20",
     "expo-status-bar": "~57.0.1",
+    "lucide-react": "0.575.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
@@ -32,6 +43,22 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
-    "react-native-web": "^0.21.2"
+    "react-native-web": "^0.21.2",
+    "tailwindcss": "4.3.5",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@lovable.dev/vite-tanstack-config": "2.28.0",
+    "@testing-library/jest-dom": "6.6.0",
+    "@testing-library/react": "16.3.2",
+    "@types/node": "22.16.5",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "jsdom": "20.0.3",
+    "nitro": "3.0.260603-beta",
+    "typescript": "5.8.3",
+    "vite": "8.1.7",
+    "vitest": "4.1.12"
   }
 }
