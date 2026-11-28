@@ -150,10 +150,32 @@ export const GLOVE_MEASUREMENTS = [
 ];
 export const MODEL_OPTIONS = ["Fechada", "Dedo longo sem costura", "Com dedos abertos", "Sem dedos"];
 
-export function measurementNames(productId: string) {
-  return productId.startsWith("luva-punho")
-    ? GLOVE_MEASUREMENTS
-    : ["Medida A — campo demonstrativo", "Medida B — campo demonstrativo"];
+/** Gabaritos transcritos do documento MEDIDAS fornecido pelo CTQ (unidade: cm). */
+export const MEASUREMENT_TEMPLATES = {
+  mao: { title: "Medidas da mão", image: "p1", fields: GLOVE_MEASUREMENTS, models: MODEL_OPTIONS },
+  "luva-manga": { title: "Luva e manga", image: "p7", fields: ["J · Comprimento total luva", "K · Circunferência pulso", "L · Circunferência antebraço", "M · Circunferência cotovelo", "N · Circunferência bíceps", "1-2 · Comprimento", "2-3 · Comprimento", "3-4 · Comprimento", "1-4 · Comprimento"], models: ["Meio dedo", "Ponta fechada", "Sem dedo", "Dedo longo sem costura ponta"] },
+  pe: { title: "Medidas do pé e perna", image: "p2", fields: ["1 · Altura da planta do pé", "2 · Circunferência do pé", "3 · Circunferência do dedão", "4 · Circunferência dos demais dedos", "5 · Circunferência do tornozelo", "6 · Circunferência da panturrilha", "7 · Circunferência do joelho", "8 · Circunferência da coxa", "9 · Comprimento total da meia", "A-D · Comprimento desejado da meia"], models: ["Fechada", "Fechada com dedos", "Com dedos abertos", "Sem dedos"] },
+  "meia-calca": { title: "Meia calça", image: "p5", fields: ["A · Altura total", "B · Altura interna perna", "C · Circunferência cintura", "D · Circunferência quadril", "E · Circunferência coxa", "F · Circunferência coxa (joelho)", "G · Circunferência panturrilha", "H · Circunferência tornozelo"], models: [] },
+  torax: { title: "Tórax", image: "p6", fields: ["A · Altura total", "B · Largura ombro x ombro", "C · Circunferência cava ombro/braço", "D · Circunferência bíceps", "E · Circunferência cotovelo", "F · Circunferência antebraço", "G · Circunferência punho", "H · Circunferência tronco", "I · Circunferência cintura", "J · Circunferência abdômen", "K · Circunferência gola", "L · Comprimento pescoço x ombro", "M · Comprimento ombro x axila", "N · Altura ombro x punho", "O · Altura interna braço (axila x punho)"], models: [] },
+  cabeca: { title: "Cabeça e pescoço", image: "p4", fields: ["A · Circunferência", "B · Circunferência", "C · Circunferência", "D · Circunferência", "1-2 · Comprimento"], models: [] },
+} as const;
+export type TemplateKey = keyof typeof MEASUREMENT_TEMPLATES;
+
+export function templateFor(productId: string): TemplateKey {
+  if (productId.startsWith("luva-punho")) return "mao";
+  if (productId.startsWith("luva-ombro") || productId.startsWith("meio-cano-braco")) return "luva-manga";
+  if (productId === "meia-calca") return "meia-calca";
+  if (productId.startsWith("torax")) return "torax";
+  if (productId.startsWith("cabeca")) return "cabeca";
+  return "pe";
+}
+
+export function measurementNames(productId: string): readonly string[] {
+  return MEASUREMENT_TEMPLATES[templateFor(productId)].fields;
+}
+
+export function modelOptionsFor(productId: string): readonly string[] {
+  return MEASUREMENT_TEMPLATES[templateFor(productId)].models;
 }
 
 export function availableProducts(regions: string[]) {

@@ -2,10 +2,11 @@ import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, FileImage, Plus, Trash2 } from "lucide-react";
 import { useRef, useState, type ChangeEvent } from "react";
 import { PatientFields } from "./patient-form";
+import { TEMPLATE_IMAGES } from "./template-images";
 import { BodyMap } from "./body-map";
 import { useDemonstration } from "./store";
 import {
-  CATALOG, EMPTY_PATIENT, MODEL_OPTIONS, availableProducts, measurementNames, regionName, validateDraftStep,
+  CATALOG, EMPTY_PATIENT, MEASUREMENT_TEMPLATES, availableProducts, measurementNames, modelOptionsFor, templateFor, regionName, validateDraftStep,
   type Attachment,
 } from "@/lib/burncare/model";
 
@@ -168,17 +169,19 @@ export function OrderWizard() {
 
           {draft.step === 2 && (
             <div className="space-y-7">
-              <p className="text-sm leading-6 text-muted-foreground">A demonstração exige duas medidas válidas por produto. Os campos não substituem os gabaritos clínicos oficiais.</p>
+              <p className="text-sm leading-6 text-muted-foreground">Gabaritos conforme o documento de medidas do CTQ. Informe as medidas em centímetros; ao menos duas medidas válidas por produto.</p>
               {draft.productIds.map((productId) => {
                 const product = CATALOG.find((item) => item.id === productId);
                 if (!product) return null;
                 const names = measurementNames(productId);
-                const isOfficialGlove = productId.startsWith("luva-punho");
+                const template = MEASUREMENT_TEMPLATES[templateFor(productId)];
+                const models = modelOptionsFor(productId);
                 return (
                   <section key={productId} className="rounded-xl border p-4">
                     <h3 className="font-semibold">{product.description}</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">{isOfficialGlove ? "Gabarito da luva até o punho · unidade: centímetros (cm)." : "Campos genéricos demonstrativos; o gabarito específico ainda não foi integrado."}</p>
-                    <div className="mt-4"><label className="label" htmlFor={`model-${productId}`}>Modelo / acabamento</label><select id={`model-${productId}`} className="field max-w-md" value={draft.models[productId] ?? ""} onChange={(event) => updateDraft({ models: { ...draft.models, [productId]: event.target.value } })}><option value="">Escolher (se aplicável)</option>{MODEL_OPTIONS.map((model) => <option key={model}>{model}</option>)}</select></div>
+                    <p className="mt-1 text-xs text-muted-foreground">Gabarito: {template.title} · unidade: centímetros (cm)</p>
+                    <details className="mt-3"><summary className="cursor-pointer text-sm font-semibold text-primary">Ver ilustração do gabarito</summary><img src={TEMPLATE_IMAGES[template.image]} alt={`Ilustração do gabarito ${template.title}`} loading="lazy" className="mt-2 max-h-96 w-auto rounded border bg-card" /></details>
+                    {models.length > 0 && <div className="mt-4"><label className="label" htmlFor={`model-${productId}`}>Modelo / acabamento</label><select id={`model-${productId}`} className="field max-w-md" value={draft.models[productId] ?? ""} onChange={(event) => updateDraft({ models: { ...draft.models, [productId]: event.target.value } })}><option value="">Escolher (se aplicável)</option>{models.map((model) => <option key={model}>{model}</option>)}</select></div>}
                     <div className="mt-4 grid gap-x-5 sm:grid-cols-2">
                       {names.map((name, index) => (
                         <div key={name} className="flex items-center gap-3 border-b py-2.5">
